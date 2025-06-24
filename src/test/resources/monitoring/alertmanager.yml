@@ -1,0 +1,171 @@
+global:
+  smtp_smarthost: 'localhost:587'
+  smtp_from: 'alerts@trading-company.com'
+  smtp_auth_username: 'alerts@trading-company.com'
+  smtp_auth_password: 'password'
+
+route:
+  group_by: ['alertname', 'cluster', 'service']
+  group_wait: 10s
+  group_interval: 10s
+  repeat_interval: 1h
+  receiver: 'web.hook'
+  routes:
+    # Critical alerts go to on-call team immediately
+    - match:
+        severity: critical
+      receiver: 'critical-alerts'
+      group_wait: 0s
+      repeat_interval: 5m
+      
+    # Business alerts go to trading team
+    - match:
+        category: business
+      receiver: 'trading-team'
+      group_interval: 5m
+      repeat_interval: 30m
+      
+    # Performance alerts go to platform team
+    - match:
+        category: performance
+      receiver: 'platform-team'
+      group_interval: 2m
+      repeat_interval: 15m
+      
+    # SLA alerts go to management
+    - match:
+        category: sla
+      receiver: 'sla-alerts'
+      group_wait: 0s
+      repeat_interval: 10m
+
+receivers:
+  - name: 'web.hook'
+    webhook_configs:
+      - url: 'http://webhook-service:5001/webhook'
+        send_resolved: true
+        http_config:
+          basic_auth:
+            username: 'webhook_user'
+            password: 'webhook_password'
+
+  - name: 'critical-alerts'
+    email_configs:
+      - to: 'oncall@trading-company.com'
+        subject: '🚨 CRITICAL: {{ .GroupLabels.alertname }} - {{ .GroupLabels.service }}'
+        body: |
+          {{ range .Alerts }}
+          Alert: {{ .Annotations.summary }}
+          Description: {{ .Annotations.description }}
+          Severity: {{ .Labels.severity }}
+          Service: {{ .Labels.service }}
+          Runbook: {{ .Annotations.runbook_url }}
+          
+          Labels:
+          {{ range .Labels.SortedPairs }}  {{ .Name }}: {{ .Value }}
+          {{ end }}
+          {{ end }}
+        headers:
+          Priority: 'high'
+    slack_configs:
+      - api_url: 'https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK'
+        channel: '#critical-alerts'
+        title: '🚨 Critical Alert: {{ .GroupLabels.alertname }}'
+        text: |
+          {{ range .Alerts }}
+          *Alert:* {{ .Annotations.summary }}
+          *Description:* {{ .Annotations.description }}
+          *Service:* {{ .Labels.service }}
+          *Runbook:* {{ .Annotations.runbook_url }}
+          {{ end }}
+        send_resolved: true
+    pagerduty_configs:
+      - routing_key: 'YOUR_PAGERDUTY_INTEGRATION_KEY'
+        description: '{{ .GroupLabels.alertname }} - {{ .GroupLabels.service }}'
+
+  - name: 'trading-team'
+    email_configs:
+      - to: 'trading-team@trading-company.com'
+        subject: '📊 Trading Alert: {{ .GroupLabels.alertname }}'
+        body: |
+          {{ range .Alerts }}
+          Alert: {{ .Annotations.summary }}
+          Description: {{ .Annotations.description }}
+          Service: {{ .Labels.service }}
+          Category: {{ .Labels.category }}
+          Runbook: {{ .Annotations.runbook_url }}
+          {{ end }}
+    slack_configs:
+      - api_url: 'https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK'
+        channel: '#trading-alerts'
+        title: '📊 Trading Alert: {{ .GroupLabels.alertname }}'
+        text: |
+          {{ range .Alerts }}
+          *Alert:* {{ .Annotations.summary }}
+          *Description:* {{ .Annotations.description }}
+          *Service:* {{ .Labels.service }}
+          {{ end }}
+
+  - name: 'platform-team'
+    email_configs:
+      - to: 'platform-team@trading-company.com'
+        subject: '⚡ Performance Alert: {{ .GroupLabels.alertname }}'
+        body: |
+          {{ range .Alerts }}
+          Alert: {{ .Annotations.summary }}
+          Description: {{ .Annotations.description }}
+          Service: {{ .Labels.service }}
+          Category: {{ .Labels.category }}
+          Runbook: {{ .Annotations.runbook_url }}
+          {{ end }}
+    slack_configs:
+      - api_url: 'https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK'
+        channel: '#platform-alerts'
+        title: '⚡ Performance Alert: {{ .GroupLabels.alertname }}'
+
+  - name: 'sla-alerts'
+    email_configs:
+      - to: 'management@trading-company.com,sre-team@trading-company.com'
+        subject: '📈 SLA Alert: {{ .GroupLabels.alertname }}'
+        body: |
+          {{ range .Alerts }}
+          SLA BREACH DETECTED
+          
+          Alert: {{ .Annotations.summary }}
+          Description: {{ .Annotations.description }}
+          Service: {{ .Labels.service }}
+          Severity: {{ .Labels.severity }}
+          Runbook: {{ .Annotations.runbook_url }}
+          
+          This alert indicates a potential SLA breach that requires immediate attention.
+          {{ end }}
+        headers:
+          Priority: 'high'
+    slack_configs:
+      - api_url: 'https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK'
+        channel: '#sla-alerts'
+        title: '📈 SLA Alert: {{ .GroupLabels.alertname }}'
+        text: |
+          {{ range .Alerts }}
+          🚨 *SLA BREACH DETECTED* 🚨
+          
+          *Alert:* {{ .Annotations.summary }}
+          *Description:* {{ .Annotations.description }}
+          *Service:* {{ .Labels.service }}
+          *Runbook:* {{ .Annotations.runbook_url }}
+          {{ end }}
+
+inhibit_rules:
+  # Inhibit warning alerts if critical alert is firing
+  - source_match:
+      severity: 'critical'
+    target_match:
+      severity: 'warning'
+    equal: ['alertname', 'service']
+    
+  # Inhibit individual component alerts if application is down
+  - source_match:
+      alertname: 'TradingApplicationDown'
+    target_match_re:
+      alertname: '(HighTradeErrorRate|HighTradeCreationTime|DatabaseConnectionPoolExhaustion)'
+    equal: ['service']

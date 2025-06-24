@@ -1,0 +1,64 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: 'trading-cluster'
+    environment: 'test'
+
+rule_files:
+  - "/etc/prometheus/rules/*.yml"
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          - alertmanager:9093
+
+scrape_configs:
+  # Prometheus itself
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+    scrape_interval: 15s
+    metrics_path: '/metrics'
+
+  # Quarkus Trading Application
+  - job_name: 'quarkus-trading'
+    metrics_path: '/q/metrics'
+    scrape_interval: 10s
+    scrape_timeout: 10s
+    static_configs:
+      - targets: ['host.docker.internal:8080']
+    honor_labels: true
+    metric_relabel_configs:
+      # Add application label
+      - target_label: application
+        replacement: 'trading-app'
+      # Add environment label
+      - target_label: environment
+        replacement: 'test'
+
+  # Health endpoint monitoring
+  - job_name: 'quarkus-health'
+    metrics_path: '/q/health'
+    scrape_interval: 30s
+    scrape_timeout: 5s
+    static_configs:
+      - targets: ['host.docker.internal:8080']
+    metric_relabel_configs:
+      - target_label: application
+        replacement: 'trading-app'
+      - target_label: check_type
+        replacement: 'health'
+
+  # Node Exporter (if available)
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets: ['node-exporter:9100']
+    scrape_interval: 15s
+
+  # AlertManager
+  - job_name: 'alertmanager'
+    static_configs:
+      - targets: ['alertmanager:9093']
+    scrape_interval: 15s

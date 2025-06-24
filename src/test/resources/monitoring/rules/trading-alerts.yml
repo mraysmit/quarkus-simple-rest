@@ -1,0 +1,226 @@
+groups:
+  - name: trading-application-alerts
+    rules:
+      # High Error Rate Alert
+      - alert: HighTradeErrorRate
+        expr: |
+          (
+            rate(trading_trades_failed_total[5m]) / 
+            rate(trading_trades_created_total[5m])
+          ) > 0.1
+        for: 2m
+        labels:
+          severity: warning
+          service: trading-app
+          category: business
+        annotations:
+          summary: "High trade error rate detected"
+          description: "Trade error rate is {{ $value | humanizePercentage }} over the last 5 minutes, which is above the 10% threshold."
+          runbook_url: "https://wiki.company.com/runbooks/trading-high-error-rate"
+
+      # Critical Error Rate Alert
+      - alert: CriticalTradeErrorRate
+        expr: |
+          (
+            rate(trading_trades_failed_total[5m]) / 
+            rate(trading_trades_created_total[5m])
+          ) > 0.25
+        for: 1m
+        labels:
+          severity: critical
+          service: trading-app
+          category: business
+        annotations:
+          summary: "Critical trade error rate detected"
+          description: "Trade error rate is {{ $value | humanizePercentage }} over the last 5 minutes, which is above the 25% critical threshold."
+          runbook_url: "https://wiki.company.com/runbooks/trading-critical-error-rate"
+
+      # High Response Time Alert
+      - alert: HighTradeCreationTime
+        expr: |
+          histogram_quantile(0.95, 
+            rate(trading_trades_creation_time_seconds_bucket[5m])
+          ) > 2.0
+        for: 3m
+        labels:
+          severity: warning
+          service: trading-app
+          category: performance
+        annotations:
+          summary: "High trade creation response time"
+          description: "95th percentile trade creation time is {{ $value }}s, which is above the 2s threshold."
+          runbook_url: "https://wiki.company.com/runbooks/trading-high-latency"
+
+      # Application Down Alert
+      - alert: TradingApplicationDown
+        expr: up{job="quarkus-trading"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: trading-app
+          category: availability
+        annotations:
+          summary: "Trading application is down"
+          description: "The trading application has been down for more than 1 minute."
+          runbook_url: "https://wiki.company.com/runbooks/trading-app-down"
+
+      # High Memory Usage Alert
+      - alert: HighMemoryUsage
+        expr: |
+          (
+            jvm_memory_used_bytes{area="heap"} / 
+            jvm_memory_max_bytes{area="heap"}
+          ) > 0.85
+        for: 5m
+        labels:
+          severity: warning
+          service: trading-app
+          category: resource
+        annotations:
+          summary: "High JVM heap memory usage"
+          description: "JVM heap memory usage is {{ $value | humanizePercentage }}, which is above the 85% threshold."
+          runbook_url: "https://wiki.company.com/runbooks/high-memory-usage"
+
+      # Database Connection Pool Alert
+      - alert: DatabaseConnectionPoolExhaustion
+        expr: |
+          (
+            agroal_active_count / 
+            agroal_max_used_count
+          ) > 0.9
+        for: 2m
+        labels:
+          severity: critical
+          service: trading-app
+          category: database
+        annotations:
+          summary: "Database connection pool near exhaustion"
+          description: "Database connection pool usage is {{ $value | humanizePercentage }}, which is above the 90% threshold."
+          runbook_url: "https://wiki.company.com/runbooks/db-connection-pool"
+
+      # Pending Trades Accumulation Alert
+      - alert: PendingTradesAccumulation
+        expr: trading_trades_pending > 100
+        for: 10m
+        labels:
+          severity: warning
+          service: trading-app
+          category: business
+        annotations:
+          summary: "High number of pending trades"
+          description: "There are {{ $value }} pending trades, which may indicate processing issues."
+          runbook_url: "https://wiki.company.com/runbooks/pending-trades"
+
+      # HTTP 5xx Error Rate Alert
+      - alert: HighHTTP5xxErrorRate
+        expr: |
+          (
+            rate(http_server_requests_total{status=~"5.."}[5m]) / 
+            rate(http_server_requests_total[5m])
+          ) > 0.05
+        for: 2m
+        labels:
+          severity: warning
+          service: trading-app
+          category: http
+        annotations:
+          summary: "High HTTP 5xx error rate"
+          description: "HTTP 5xx error rate is {{ $value | humanizePercentage }} over the last 5 minutes."
+          runbook_url: "https://wiki.company.com/runbooks/http-5xx-errors"
+
+  - name: trading-business-alerts
+    rules:
+      # Unusual Trading Volume Alert
+      - alert: UnusualTradingVolume
+        expr: |
+          rate(trading_trades_created_total[1h]) > 
+          (avg_over_time(rate(trading_trades_created_total[1h])[7d]) * 3)
+        for: 15m
+        labels:
+          severity: info
+          service: trading-app
+          category: business
+        annotations:
+          summary: "Unusual trading volume detected"
+          description: "Current trading volume is {{ $value }} trades/hour, which is 3x higher than the 7-day average."
+          runbook_url: "https://wiki.company.com/runbooks/unusual-volume"
+
+      # No Trades Alert
+      - alert: NoTradesCreated
+        expr: |
+          rate(trading_trades_created_total[30m]) == 0
+        for: 30m
+        labels:
+          severity: warning
+          service: trading-app
+          category: business
+        annotations:
+          summary: "No trades created in the last 30 minutes"
+          description: "No trades have been created in the last 30 minutes, which may indicate an issue."
+          runbook_url: "https://wiki.company.com/runbooks/no-trades"
+
+      # Counterparty Creation Spike Alert
+      - alert: CounterpartyCreationSpike
+        expr: |
+          rate(trading_counterparties_created_total[1h]) > 
+          (avg_over_time(rate(trading_counterparties_created_total[1h])[24h]) * 5)
+        for: 10m
+        labels:
+          severity: info
+          service: trading-app
+          category: business
+        annotations:
+          summary: "Spike in counterparty creation detected"
+          description: "Counterparty creation rate is {{ $value }}/hour, which is 5x higher than the 24-hour average."
+          runbook_url: "https://wiki.company.com/runbooks/counterparty-spike"
+
+  - name: trading-sla-alerts
+    rules:
+      # SLA: 99.9% Availability
+      - alert: SLAAvailabilityBreach
+        expr: |
+          (
+            avg_over_time(up{job="quarkus-trading"}[1h]) < 0.999
+          )
+        for: 0m
+        labels:
+          severity: critical
+          service: trading-app
+          category: sla
+        annotations:
+          summary: "SLA availability breach"
+          description: "Application availability over the last hour is {{ $value | humanizePercentage }}, below the 99.9% SLA."
+          runbook_url: "https://wiki.company.com/runbooks/sla-breach"
+
+      # SLA: 95th percentile response time < 1s
+      - alert: SLAResponseTimeBreach
+        expr: |
+          histogram_quantile(0.95, 
+            rate(http_server_requests_seconds_bucket{uri!~"/q/.*"}[1h])
+          ) > 1.0
+        for: 5m
+        labels:
+          severity: warning
+          service: trading-app
+          category: sla
+        annotations:
+          summary: "SLA response time breach"
+          description: "95th percentile response time over the last hour is {{ $value }}s, above the 1s SLA."
+          runbook_url: "https://wiki.company.com/runbooks/sla-response-time"
+
+      # SLA: Error rate < 1%
+      - alert: SLAErrorRateBreach
+        expr: |
+          (
+            rate(http_server_requests_total{status=~"[45].."}[1h]) / 
+            rate(http_server_requests_total[1h])
+          ) > 0.01
+        for: 5m
+        labels:
+          severity: warning
+          service: trading-app
+          category: sla
+        annotations:
+          summary: "SLA error rate breach"
+          description: "Error rate over the last hour is {{ $value | humanizePercentage }}, above the 1% SLA."
+          runbook_url: "https://wiki.company.com/runbooks/sla-error-rate"
