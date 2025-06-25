@@ -52,21 +52,22 @@ receivers:
   - name: 'critical-alerts'
     email_configs:
       - to: 'oncall@trading-company.com'
-        subject: '🚨 CRITICAL: {{ .GroupLabels.alertname }} - {{ .GroupLabels.service }}'
-        body: |
-          {{ range .Alerts }}
-          Alert: {{ .Annotations.summary }}
-          Description: {{ .Annotations.description }}
-          Severity: {{ .Labels.severity }}
-          Service: {{ .Labels.service }}
-          Runbook: {{ .Annotations.runbook_url }}
-          
-          Labels:
-          {{ range .Labels.SortedPairs }}  {{ .Name }}: {{ .Value }}
-          {{ end }}
-          {{ end }}
+        from: 'alerts@trading-company.com'
+        smarthost: 'localhost:587'
+        auth_username: 'alerts@trading-company.com'
+        auth_password: 'password'
         headers:
+          Subject: '🚨 CRITICAL: {{ .GroupLabels.alertname }} - {{ .GroupLabels.service }}'
           Priority: 'high'
+        html: |
+          <h2>Critical Alert</h2>
+          {{ range .Alerts }}
+          <p><strong>Alert:</strong> {{ .Annotations.summary }}</p>
+          <p><strong>Description:</strong> {{ .Annotations.description }}</p>
+          <p><strong>Severity:</strong> {{ .Labels.severity }}</p>
+          <p><strong>Service:</strong> {{ .Labels.service }}</p>
+          <p><strong>Runbook:</strong> <a href="{{ .Annotations.runbook_url }}">{{ .Annotations.runbook_url }}</a></p>
+          {{ end }}
     slack_configs:
       - api_url: 'https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK'
         channel: '#critical-alerts'
@@ -86,14 +87,16 @@ receivers:
   - name: 'trading-team'
     email_configs:
       - to: 'trading-team@trading-company.com'
-        subject: '📊 Trading Alert: {{ .GroupLabels.alertname }}'
-        body: |
+        from: 'alerts@trading-company.com'
+        headers:
+          Subject: '📊 Trading Alert: {{ .GroupLabels.alertname }}'
+        html: |
+          <h2>Trading Alert</h2>
           {{ range .Alerts }}
-          Alert: {{ .Annotations.summary }}
-          Description: {{ .Annotations.description }}
-          Service: {{ .Labels.service }}
-          Category: {{ .Labels.category }}
-          Runbook: {{ .Annotations.runbook_url }}
+          <p><strong>Alert:</strong> {{ .Annotations.summary }}</p>
+          <p><strong>Description:</strong> {{ .Annotations.description }}</p>
+          <p><strong>Service:</strong> {{ .Labels.service }}</p>
+          <p><strong>Category:</strong> {{ .Labels.category }}</p>
           {{ end }}
     slack_configs:
       - api_url: 'https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK'
@@ -109,14 +112,15 @@ receivers:
   - name: 'platform-team'
     email_configs:
       - to: 'platform-team@trading-company.com'
-        subject: '⚡ Performance Alert: {{ .GroupLabels.alertname }}'
-        body: |
+        from: 'alerts@trading-company.com'
+        headers:
+          Subject: '⚡ Performance Alert: {{ .GroupLabels.alertname }}'
+        html: |
+          <h2>Performance Alert</h2>
           {{ range .Alerts }}
-          Alert: {{ .Annotations.summary }}
-          Description: {{ .Annotations.description }}
-          Service: {{ .Labels.service }}
-          Category: {{ .Labels.category }}
-          Runbook: {{ .Annotations.runbook_url }}
+          <p><strong>Alert:</strong> {{ .Annotations.summary }}</p>
+          <p><strong>Description:</strong> {{ .Annotations.description }}</p>
+          <p><strong>Service:</strong> {{ .Labels.service }}</p>
           {{ end }}
     slack_configs:
       - api_url: 'https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK'
@@ -126,21 +130,19 @@ receivers:
   - name: 'sla-alerts'
     email_configs:
       - to: 'management@trading-company.com,sre-team@trading-company.com'
-        subject: '📈 SLA Alert: {{ .GroupLabels.alertname }}'
-        body: |
-          {{ range .Alerts }}
-          SLA BREACH DETECTED
-          
-          Alert: {{ .Annotations.summary }}
-          Description: {{ .Annotations.description }}
-          Service: {{ .Labels.service }}
-          Severity: {{ .Labels.severity }}
-          Runbook: {{ .Annotations.runbook_url }}
-          
-          This alert indicates a potential SLA breach that requires immediate attention.
-          {{ end }}
+        from: 'alerts@trading-company.com'
         headers:
+          Subject: '📈 SLA Alert: {{ .GroupLabels.alertname }}'
           Priority: 'high'
+        html: |
+          <h2 style="color: red;">SLA BREACH DETECTED</h2>
+          {{ range .Alerts }}
+          <p><strong>Alert:</strong> {{ .Annotations.summary }}</p>
+          <p><strong>Description:</strong> {{ .Annotations.description }}</p>
+          <p><strong>Service:</strong> {{ .Labels.service }}</p>
+          <p><strong>Severity:</strong> {{ .Labels.severity }}</p>
+          <p>This alert indicates a potential SLA breach that requires immediate attention.</p>
+          {{ end }}
     slack_configs:
       - api_url: 'https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK'
         channel: '#sla-alerts'

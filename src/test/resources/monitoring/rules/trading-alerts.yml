@@ -133,8 +133,7 @@ groups:
       # Unusual Trading Volume Alert
       - alert: UnusualTradingVolume
         expr: |
-          rate(trading_trades_created_total[1h]) > 
-          (avg_over_time(rate(trading_trades_created_total[1h])[7d]) * 3)
+          rate(trading_trades_created_total[1h]) > 10
         for: 15m
         labels:
           severity: info
@@ -142,7 +141,7 @@ groups:
           category: business
         annotations:
           summary: "Unusual trading volume detected"
-          description: "Current trading volume is {{ $value }} trades/hour, which is 3x higher than the 7-day average."
+          description: "Current trading volume is {{ $value }} trades/hour, which is above the normal threshold."
           runbook_url: "https://wiki.company.com/runbooks/unusual-volume"
 
       # No Trades Alert
@@ -162,8 +161,7 @@ groups:
       # Counterparty Creation Spike Alert
       - alert: CounterpartyCreationSpike
         expr: |
-          rate(trading_counterparties_created_total[1h]) > 
-          (avg_over_time(rate(trading_counterparties_created_total[1h])[24h]) * 5)
+          rate(trading_counterparties_created_total[1h]) > 5
         for: 10m
         labels:
           severity: info
@@ -171,7 +169,7 @@ groups:
           category: business
         annotations:
           summary: "Spike in counterparty creation detected"
-          description: "Counterparty creation rate is {{ $value }}/hour, which is 5x higher than the 24-hour average."
+          description: "Counterparty creation rate is {{ $value }}/hour, which is above the normal threshold."
           runbook_url: "https://wiki.company.com/runbooks/counterparty-spike"
 
   - name: trading-sla-alerts
@@ -179,10 +177,8 @@ groups:
       # SLA: 99.9% Availability
       - alert: SLAAvailabilityBreach
         expr: |
-          (
-            avg_over_time(up{job="quarkus-trading"}[1h]) < 0.999
-          )
-        for: 0m
+          avg_over_time(up{job="quarkus-trading"}[1h]) < 0.999
+        for: 1m
         labels:
           severity: critical
           service: trading-app

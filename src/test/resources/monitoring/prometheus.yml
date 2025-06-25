@@ -28,7 +28,7 @@ scrape_configs:
     scrape_interval: 10s
     scrape_timeout: 10s
     static_configs:
-      - targets: ['host.docker.internal:8080']
+      - targets: ['host.docker.internal:8081']
     honor_labels: true
     metric_relabel_configs:
       # Add application label
@@ -44,7 +44,7 @@ scrape_configs:
     scrape_interval: 30s
     scrape_timeout: 5s
     static_configs:
-      - targets: ['host.docker.internal:8080']
+      - targets: ['host.docker.internal:8081']
     metric_relabel_configs:
       - target_label: application
         replacement: 'trading-app'
