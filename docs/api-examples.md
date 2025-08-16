@@ -351,4 +351,4 @@ Import the following collection for comprehensive API testing:
 - All endpoints return appropriate HTTP status codes
 - Error responses include detailed error messages
 
-For more information, see the main [README.md](../README.md) file.
+For more information, see the main [README.md](README.md) file.

@@ -1,6 +1,6 @@
-# Quarkus Trading Application
+# Quarkus Simple REST Application
 
-A comprehensive trading system built with Quarkus, featuring REST APIs, database persistence, comprehensive monitoring, and enterprise-grade testing infrastructure.
+A comprehensive trading system built with Quarkus, featuring REST APIs, database persistence, comprehensive monitoring, and testing infrastructure.
 
 ## 🚀 Features
 
@@ -448,7 +448,7 @@ QUARKUS_LOG_LEVEL=INFO
 
 - [TestContainers Implementation](TESTCONTAINERS_IMPLEMENTATION.md)
 - [Prometheus & Grafana Setup](PROMETHEUS_GRAFANA_IMPLEMENTATION.md)
-- [API Examples and Testing Guide](docs/api-examples.md)
+- [API Examples and Testing Guide](api-examples.md)
 
 ## 🤝 Contributing
 
